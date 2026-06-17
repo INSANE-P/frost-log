@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { gmarket, pretendard } from "./fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,12 +16,12 @@ const themeInitScript = `(function(){try{var m=matchMedia('(prefers-color-scheme
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ko" suppressHydrationWarning>
+    <html
+      lang="ko"
+      className={`${pretendard.variable} ${gmarket.variable}`}
+      suppressHydrationWarning
+    >
       <head>
-        <link
-          rel="stylesheet"
-          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
-        />
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body>{children}</body>

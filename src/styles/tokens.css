@@ -1,27 +1,7 @@
-/* Gmarket Sans — 제목·날짜용 디스플레이 한글체 (Light/Medium/Bold) */
-@font-face {
-  font-family: "GmarketSans";
-  font-style: normal;
-  font-weight: 300;
-  font-display: swap;
-  src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansLight.woff") format("woff");
-}
-@font-face {
-  font-family: "GmarketSans";
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansMedium.woff") format("woff");
-}
-@font-face {
-  font-family: "GmarketSans";
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansBold.woff") format("woff");
-}
-
 /*
+  폰트는 next/font(셀프 호스팅)로 로드하고, 여기선 생성된 CSS 변수(--font-pretendard,
+  --font-gmarket)를 토큰에 연결한다(ADR-0003). 파일/등록은 src/app/fonts.ts.
+
   Frost 디자인 토큰 — 2계층
   raw: 원시 팔레트 / semantic: 컴포넌트가 참조하는 의미 토큰
   다크 모드는 semantic만 덮어쓴다(컴포넌트는 그대로).
@@ -94,9 +74,9 @@
   --color-accent: var(--accent);
   --color-accent-bright: var(--accent-bright);
 
-  --font-sans: "Pretendard Variable", Pretendard, system-ui, sans-serif;
+  --font-sans: var(--font-pretendard), system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
-  --font-title: "GmarketSans", "Pretendard Variable", Pretendard, system-ui, sans-serif;
+  --font-title: var(--font-gmarket), var(--font-pretendard), system-ui, sans-serif;
 
   --container-prose: 68ch;
 }
