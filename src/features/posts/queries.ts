@@ -1,35 +1,102 @@
-import { MOCK_ENTRIES } from "./mock";
+import { createClient } from "@/lib/supabase/server";
+import { renderTiptap } from "@/lib/content/tiptap";
 import type { ContentType, Entry } from "./types";
 
 /**
- * 읽기 경계(ADR-0002). 지금은 mock을 반환하지만, Supabase 연결 시 이 파일 내부만
- * 교체하면 페이지·컴포넌트는 그대로 동작한다. 모든 함수는 async로 둬 DB 호출과 시그니처를 맞춘다.
+ * 읽기 경계(ADR-0002). Supabase에서 published 글만 읽는다(RLS도 이중 보호).
+ * DB row를 Entry로 매핑하고 본문(Tiptap JSON)은 렌더해 둔다 — 화면·컴포넌트는 Entry만 안다.
  */
 
-const byDateDesc = (a: Entry, b: Entry) => b.date.localeCompare(a.date);
+type TagRel = { name: string } | { name: string }[] | null;
+type Row = {
+  slug: string;
+  type: ContentType;
+  title: string;
+  excerpt: string | null;
+  content: unknown;
+  cover_image: string | null;
+  featured: boolean | null;
+  entry_date: string | null;
+  published_at: string | null;
+  post_tags: { tags: TagRel }[] | null;
+};
+
+const SELECT =
+  "slug, type, title, excerpt, content, cover_image, featured, entry_date, published_at, post_tags(tags(name))";
+const SELECT_BY_TAG =
+  "slug, type, title, excerpt, content, cover_image, featured, entry_date, published_at, post_tags!inner(tags!inner(name))";
+
+function tagNames(postTags: Row["post_tags"]): string[] | undefined {
+  if (!postTags?.length) return undefined;
+  const names = postTags
+    .map((pt) => (Array.isArray(pt.tags) ? pt.tags[0]?.name : pt.tags?.name))
+    .filter((n): n is string => !!n);
+  return names.length ? names : undefined;
+}
+
+function toEntry(r: Row): Entry {
+  return {
+    slug: r.slug,
+    type: r.type,
+    title: r.title,
+    excerpt: r.excerpt ?? "",
+    date: r.entry_date ?? (r.published_at ? r.published_at.slice(0, 10) : ""),
+    tags: tagNames(r.post_tags),
+    featured: r.featured ?? false,
+    coverImage: r.cover_image ?? undefined,
+    body: renderTiptap(r.content),
+  };
+}
 
 /** 홈 큐레이션: 핀(featured)된 항목 */
 export async function getFeatured(): Promise<Entry[]> {
-  return MOCK_ENTRIES.filter((e) => e.featured).sort(byDateDesc);
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("posts")
+    .select(SELECT)
+    .eq("status", "published")
+    .eq("featured", true)
+    .order("entry_date", { ascending: false });
+  return ((data ?? []) as Row[]).map(toEntry);
 }
 
 /** 특정 흐름의 최근 항목 n개 (홈 '최근 기록/이야기') */
 export async function getRecent(type: ContentType, limit: number): Promise<Entry[]> {
-  return MOCK_ENTRIES.filter((e) => e.type === type)
-    .sort(byDateDesc)
-    .slice(0, limit);
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("posts")
+    .select(SELECT)
+    .eq("status", "published")
+    .eq("type", type)
+    .order("entry_date", { ascending: false })
+    .limit(limit);
+  return ((data ?? []) as Row[]).map(toEntry);
 }
 
 /** 목록(선택적으로 태그 필터) */
 export async function getList(type: ContentType, tag?: string): Promise<Entry[]> {
-  return MOCK_ENTRIES.filter((e) => e.type === type && (!tag || e.tags?.includes(tag))).sort(
-    byDateDesc,
-  );
+  const supabase = await createClient();
+  let query = supabase
+    .from("posts")
+    .select(tag ? SELECT_BY_TAG : SELECT)
+    .eq("status", "published")
+    .eq("type", type);
+  if (tag) query = query.eq("post_tags.tags.name", tag);
+  const { data } = await query.order("entry_date", { ascending: false });
+  return ((data ?? []) as Row[]).map(toEntry);
 }
 
 /** 상세 1건 */
 export async function getBySlug(type: ContentType, slug: string): Promise<Entry | null> {
-  return MOCK_ENTRIES.find((e) => e.type === type && e.slug === slug) ?? null;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("posts")
+    .select(SELECT)
+    .eq("status", "published")
+    .eq("type", type)
+    .eq("slug", slug)
+    .maybeSingle();
+  return data ? toEntry(data as Row) : null;
 }
 
 /** 같은 흐름의 인접 항목 — 상세 하단 내비용. prev=더 오래된, next=더 최근 */
@@ -48,9 +115,15 @@ export async function getAdjacent(
 
 /** 해당 흐름에서 쓰인 태그 목록 */
 export async function getTags(type: ContentType): Promise<string[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("posts")
+    .select("post_tags(tags(name))")
+    .eq("status", "published")
+    .eq("type", type);
   const set = new Set<string>();
-  for (const e of MOCK_ENTRIES) {
-    if (e.type === type) e.tags?.forEach((t) => set.add(t));
-  }
+  ((data ?? []) as Pick<Row, "post_tags">[]).forEach((r) =>
+    tagNames(r.post_tags)?.forEach((n) => set.add(n)),
+  );
   return [...set];
 }
