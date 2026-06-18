@@ -17,7 +17,7 @@ export type Entry = {
   featured?: boolean;
   /** 대표(커버) 이미지 경로. 없으면 본문 첫 이미지를 대표로 끌어올린다(coverOf 참고). */
   coverImage?: string;
-  /** 임시 본문(간단 HTML). Supabase 연결 시 Tiptap JSON 렌더로 교체 */
+  /** 본문 마크다운 원문 */
   body?: string;
 };
 
@@ -28,11 +28,11 @@ export function entryHref(e: Pick<Entry, "type" | "slug">): string {
 
 /**
  * 카드·상단에 노출할 대표 이미지.
- * 명시한 coverImage가 우선, 없으면 본문에 넣은 첫 이미지를 자동으로 끌어올린다
+ * 명시한 coverImage가 우선, 없으면 본문(마크다운)의 첫 이미지를 자동으로 끌어올린다
  * (글 안에 이미지를 넣기만 하면 목록에 대표로 보이게 — 글쓰기 마찰 최소화).
  */
 export function coverOf(e: Pick<Entry, "coverImage" | "body">): string | undefined {
   if (e.coverImage) return e.coverImage;
-  const m = e.body?.match(/<img[^>]+src=["']([^"']+)["']/i);
+  const m = e.body?.match(/!\[[^\]]*\]\(([^)]+)\)/);
   return m?.[1];
 }

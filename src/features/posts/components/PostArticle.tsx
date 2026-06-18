@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
+import { Markdown } from "@/lib/content/Markdown";
 import { formatDate } from "@/lib/utils/date";
 import type { Entry } from "../types";
 import { entryHref } from "../types";
@@ -76,7 +77,9 @@ export function PostArticle({
         />
       )}
 
-      <div className="prose mt-9" dangerouslySetInnerHTML={{ __html: entry.body ?? "" }} />
+      <div className="prose mt-9">
+        <Markdown>{entry.body ?? ""}</Markdown>
+      </div>
 
       {/* 반응 — "불 지피기" */}
       <div className="mt-12 border-t border-border pt-8 text-center">
