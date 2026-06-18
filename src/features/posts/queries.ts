@@ -1,10 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
-import { renderTiptap } from "@/lib/content/tiptap";
 import type { ContentType, Entry } from "./types";
 
 /**
  * 읽기 경계(ADR-0002). Supabase에서 published 글만 읽는다(RLS도 이중 보호).
- * DB row를 Entry로 매핑하고 본문(Tiptap JSON)은 렌더해 둔다 — 화면·컴포넌트는 Entry만 안다.
+ * DB row를 Entry로 매핑한다 — 본문은 마크다운 원문이며 렌더는 화면(.prose)에서 한다(ADR-0014).
  */
 
 type TagRel = { name: string } | { name: string }[] | null;
@@ -13,7 +12,7 @@ type Row = {
   type: ContentType;
   title: string;
   excerpt: string | null;
-  content: unknown;
+  content: string | null;
   cover_image: string | null;
   featured: boolean | null;
   entry_date: string | null;
@@ -44,7 +43,8 @@ function toEntry(r: Row): Entry {
     tags: tagNames(r.post_tags),
     featured: r.featured ?? false,
     coverImage: r.cover_image ?? undefined,
-    body: renderTiptap(r.content),
+    // 마이그레이션 전(jsonb)에는 content가 객체일 수 있어 string일 때만 사용
+    body: typeof r.content === "string" ? r.content : "",
   };
 }
 
