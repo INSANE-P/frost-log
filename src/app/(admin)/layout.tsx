@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/features/auth/actions";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 
 /**
  * 어드민 보호 — 세션이 없으면 /login으로 보낸다(UX 가드).
@@ -21,7 +22,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           설화 관리자
         </Link>
         <div className="flex items-center gap-3">
-          <span className="font-title text-[13px] text-muted">{user.email}</span>
+          <ThemeToggle />
+          <span className="hidden font-title text-[13px] text-muted sm:inline">{user.email}</span>
           <form action={logout}>
             <button
               type="submit"
