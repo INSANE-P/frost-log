@@ -19,6 +19,8 @@ export type Entry = {
   coverImage?: string;
   /** 본문 마크다운 원문 */
   body?: string;
+  /** "불 지피기" 누적 수 */
+  stokes?: number;
 };
 
 /** 타입에 맞는 상세 경로 */

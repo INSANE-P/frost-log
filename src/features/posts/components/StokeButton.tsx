@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { stokePost } from "../actions";
 
 /** 설화의 불꽃(겉불 + 속불). 색은 --flame-* 토큰이라 라이트/다크에서 다르게 보인다. */
 const FLAME =
@@ -8,27 +9,94 @@ const FLAME =
 const FLAME_INNER =
   "M40 53 C31 53 26 49 26 43 C26 38 28 34 31 36 C33 30 36 25 40 23 C44 25 47 30 49 36 C52 34 54 38 54 43 C54 49 49 53 40 53 Z";
 
+const storageKey = (slug: string) => `stoked:${slug}`;
+
 /**
- * "불 지피기" 반응 버튼 — 평소 일렁이고, 호버하면 피어오르고, 누르면 한 번 크게 타오른다(다시 누르면 취소).
- * 지금은 낙관적 UI(로컬 토글)만. 저장·집계는 Supabase 쓰기 연결 시 붙인다.
+ * 누른 지점에서 frost 빛이 원형으로 화면을 한 번 퍼졌다 빠르게 사라지는 연출.
+ * 색(번짐·링)은 .dark 스코프 CSS로 라이트/다크에 맞춘다. 모션 최소화 설정이면 안 만든다.
  */
-export function StokeButton({ initial = 0 }: { initial?: number }) {
+function fireBurst(x: number, y: number) {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  const base = Math.max(window.innerWidth, window.innerHeight) * 0.5;
+
+  const root = document.createElement("div");
+  root.className = "stoke-burst";
+
+  const place = (el: HTMLDivElement) => {
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+  };
+
+  const wash = document.createElement("div");
+  wash.className = "sb-fx sb-wash";
+  place(wash);
+  wash.style.width = wash.style.height = `${base}px`;
+  wash.style.animation = "sb-wash 0.7s ease-out forwards";
+  root.appendChild(wash);
+
+  const ring = document.createElement("div");
+  ring.className = "sb-fx sb-ring";
+  place(ring);
+  ring.style.width = ring.style.height = `${base * 0.9}px`;
+  ring.style.animation = "sb-ring 0.72s ease-out forwards";
+  root.appendChild(ring);
+
+  document.body.appendChild(root);
+  window.setTimeout(() => root.remove(), 900);
+}
+
+/**
+ * "불 지피기" 반응 버튼 — 평소 일렁이고, 호버하면 피어오르고, 누르면 한 번 크게 타오른다.
+ * 누르면 좁은 RPC(stokePost)로 카운트가 DB에 영속된다(ADR-0016).
+ * 중복은 브라우저당 1회(localStorage)로 가볍게 막는다 — 이미 지핀 글은 다시 못 누른다.
+ */
+export function StokeButton({ slug, initial = 0 }: { slug: string; initial?: number }) {
+  const [count, setCount] = useState(initial);
   const [mine, setMine] = useState(false);
   const [lit, setLit] = useState(false);
+  const [pending, setPending] = useState(false);
 
-  function stoke() {
-    setMine((m) => !m);
+  // localStorage는 클라이언트에서만 — 하이드레이션 이후 내 상태를 복원한다.
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(storageKey(slug))) setMine(true);
+    } catch {
+      // 접근 불가(시크릿 등) 시 무시
+    }
+  }, [slug]);
+
+  async function stoke(e: React.MouseEvent<HTMLButtonElement>) {
+    if (mine || pending) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    fireBurst(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    setMine(true);
+    setPending(true);
     setLit(true);
     window.setTimeout(() => setLit(false), 600);
-  }
+    setCount((c) => c + 1); // 낙관적 반영
 
-  const count = initial + (mine ? 1 : 0);
+    const next = await stokePost(slug);
+    if (next === null) {
+      setMine(false); // 실패 → 되돌리기
+      setCount((c) => c - 1);
+    } else {
+      setCount(next); // 서버 권위값(다른 사람 반응까지 반영)
+      try {
+        localStorage.setItem(storageKey(slug), "1");
+      } catch {
+        // 무시 — 이번 세션 동안은 지핀 상태로 동작
+      }
+    }
+    setPending(false);
+  }
 
   return (
     <button
       type="button"
       onClick={stoke}
       aria-pressed={mine}
+      disabled={pending}
       className={`stoke inline-flex items-center gap-2.5 rounded-full border px-6 py-3 transition hover:-translate-y-0.5 ${
         lit ? "is-lit" : ""
       } ${mine ? "is-mine" : ""}`}
@@ -65,7 +133,10 @@ export function StokeButton({ initial = 0 }: { initial?: number }) {
       <span className={`text-[15px] font-medium ${mine ? "text-accent" : "text-foreground"}`}>
         {mine ? "불 지폈어요" : "불 지피기"}
       </span>
-      <span className="text-[15px] font-bold text-accent tabular-nums">{count}</span>
+      {/* 카운트는 "지핀 사람한테만" 보인다 — 참여 후 "나도 함께 지폈네"의 공개 순간 */}
+      {mine && (
+        <span className="text-[15px] font-bold text-accent tabular-nums">{count}</span>
+      )}
     </button>
   );
 }

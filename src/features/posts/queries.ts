@@ -17,13 +17,14 @@ type Row = {
   featured: boolean | null;
   entry_date: string | null;
   published_at: string | null;
+  stokes: number | null;
   post_tags: { tags: TagRel }[] | null;
 };
 
 const SELECT =
-  "slug, type, title, excerpt, content, cover_image, featured, entry_date, published_at, post_tags(tags(name))";
+  "slug, type, title, excerpt, content, cover_image, featured, entry_date, published_at, stokes, post_tags(tags(name))";
 const SELECT_BY_TAG =
-  "slug, type, title, excerpt, content, cover_image, featured, entry_date, published_at, post_tags!inner(tags!inner(name))";
+  "slug, type, title, excerpt, content, cover_image, featured, entry_date, published_at, stokes, post_tags!inner(tags!inner(name))";
 
 function tagNames(postTags: Row["post_tags"]): string[] | undefined {
   if (!postTags?.length) return undefined;
@@ -45,6 +46,7 @@ function toEntry(r: Row): Entry {
     coverImage: r.cover_image ?? undefined,
     // 마이그레이션 전(jsonb)에는 content가 객체일 수 있어 string일 때만 사용
     body: typeof r.content === "string" ? r.content : "",
+    stokes: r.stokes ?? 0,
   };
 }
 
