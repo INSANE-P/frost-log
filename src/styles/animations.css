@@ -439,3 +439,68 @@
     transform: none;
   }
 }
+
+/* 불 지피기 — 누르면 frost 빛이 원형으로 화면을 한 번 퍼졌다 빠르게 사라진다(StokeButton).
+   라이트=진한 frost 블루(밝은 배경에서 보이게), 다크=밝은 시안·화이트(어두운 배경에서 빛나게).
+   오버레이는 클릭을 막지 않고(pointer-events:none), 모션 최소화면 JS가 아예 만들지 않는다. */
+.stoke-burst {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 9999;
+}
+.sb-fx {
+  position: absolute;
+  border-radius: 50%;
+  will-change: transform, opacity;
+}
+.sb-wash {
+  background: radial-gradient(
+    circle,
+    rgba(63, 159, 214, 0.5),
+    rgba(39, 105, 160, 0.22) 45%,
+    transparent 70%
+  );
+}
+.sb-ring {
+  background: transparent;
+  border: 2px solid rgba(63, 159, 214, 0.8);
+}
+html.dark .sb-wash {
+  background: radial-gradient(
+    circle,
+    rgba(143, 230, 255, 0.6),
+    rgba(79, 176, 224, 0.3) 45%,
+    transparent 72%
+  );
+}
+html.dark .sb-ring {
+  border-color: rgba(214, 246, 255, 0.9);
+}
+@keyframes sb-wash {
+  0% {
+    transform: translate(-50%, -50%) scale(0.15);
+    opacity: 0;
+  }
+  22% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.6);
+    opacity: 0;
+  }
+}
+@keyframes sb-ring {
+  0% {
+    transform: translate(-50%, -50%) scale(0.1);
+    opacity: 0;
+  }
+  16% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(3);
+    opacity: 0;
+  }
+}
