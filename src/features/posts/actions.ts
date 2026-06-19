@@ -95,6 +95,18 @@ export async function savePost(_prev: SaveState, formData: FormData): Promise<Sa
   redirect("/admin");
 }
 
+/**
+ * 불 지피기 — 익명도 호출 가능한 좁은 RPC로 "발행 글의 카운트 +1"만 한다(ADR-0016).
+ * 테이블 직접 쓰기는 RLS로 막혀 있고, 이 통로만 열려 있다. 새 카운트를 돌려준다.
+ */
+export async function stokePost(slug: string): Promise<number | null> {
+  if (!slug) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("increment_stokes", { p_slug: slug });
+  if (error) return null;
+  return typeof data === "number" ? data : null;
+}
+
 /** 글 삭제 */
 export async function deletePost(formData: FormData): Promise<void> {
   const id = String(formData.get("id") ?? "");
