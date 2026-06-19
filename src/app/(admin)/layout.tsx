@@ -15,7 +15,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!user) redirect("/login");
 
   return (
-    <div className="mx-auto max-w-3xl px-5">
+    <div className="mx-auto max-w-4xl px-4 sm:px-5">
       <header className="flex items-center justify-between border-b border-border py-4">
         <Link href="/admin" className="font-title text-base font-bold text-foreground">
           설화 관리자
