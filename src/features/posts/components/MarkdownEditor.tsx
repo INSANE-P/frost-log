@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { Crepe, CrepeFeature } from "@milkdown/crepe";
+import { uploadPostImage } from "../upload";
 import "@milkdown/crepe/theme/common/style.css";
 import "@milkdown/crepe/theme/frame.css";
 import "./editor.css";
@@ -58,6 +59,13 @@ function MarkdownEditor({
             table: { label: "표" },
             math: { label: "수식" },
           },
+        },
+        // 이미지: 드래그드랍·붙여넣기·/이미지 → Storage 업로드 후 공개 URL(onUpload 하나로 block·inline 모두 커버)
+        [CrepeFeature.ImageBlock]: {
+          onUpload: uploadPostImage,
+          inlineUploadPlaceholderText: "이미지 주소를 붙여넣거나 파일 업로드",
+          blockUploadPlaceholderText: "이미지 주소를 붙여넣거나 파일 업로드",
+          blockCaptionPlaceholderText: "이미지 설명(선택)",
         },
       },
     });

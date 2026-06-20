@@ -62,8 +62,9 @@ body {
 }
 .prose img {
   display: block;
-  width: 100%;
-  margin: 1.7em 0;
+  max-width: 100%;
+  height: auto;
+  margin: 1.7em auto;
   border: 1px solid var(--border);
   border-radius: 14px;
 }
