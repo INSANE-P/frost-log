@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { savePost, type SaveState } from "../actions";
 import type { EditData } from "../admin";
@@ -34,11 +34,18 @@ export function PostForm({
   const [state, action, pending] = useActionState(savePost, initial);
   const [content, setContent] = useState(data?.content ?? "");
   const [type, setType] = useState<"post" | "journal">(data?.type ?? "post");
+  // status는 버튼 submitter에 의존하면 Enter 제출 등에서 누락될 수 있어, 항상 있는 hidden으로 둔다.
+  const statusRef = useRef<HTMLInputElement>(null);
+  const setStatus = (s: "draft" | "published") => {
+    if (statusRef.current) statusRef.current.value = s;
+  };
 
   return (
     <form action={action}>
       {data?.id && <input type="hidden" name="id" value={data.id} />}
       <input type="hidden" name="content" value={content} />
+      {/* 기본값 = 현재 글 상태(없으면 draft). 버튼 클릭이 이 값을 바꾼다. */}
+      <input type="hidden" name="status" ref={statusRef} defaultValue={data?.status ?? "draft"} />
 
       {/* 상단 바 — 어디서든 저장/발행 */}
       <div className="sticky top-0 z-10 -mx-4 flex items-center gap-2 border-b border-hairline bg-background/85 px-4 py-3 backdrop-blur sm:-mx-5 sm:px-5">
@@ -48,8 +55,7 @@ export function PostForm({
         {state.error && <span className="text-[13px] text-red-500">{state.error}</span>}
         <button
           type="submit"
-          name="status"
-          value="draft"
+          onClick={() => setStatus("draft")}
           disabled={pending}
           className="rounded-lg border border-border px-4 py-2 text-[14px] font-medium text-foreground transition hover:border-accent disabled:opacity-60"
         >
@@ -57,8 +63,7 @@ export function PostForm({
         </button>
         <button
           type="submit"
-          name="status"
-          value="published"
+          onClick={() => setStatus("published")}
           disabled={pending}
           className="rounded-lg bg-accent px-4 py-2 text-[14px] font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
         >
