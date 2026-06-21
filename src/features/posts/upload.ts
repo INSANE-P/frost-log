@@ -1,24 +1,23 @@
 import { createClient } from "@/lib/supabase/client";
+import { requestImageSize } from "./imageSizeController";
 
 const BUCKET = "post-images";
 const MAX_BYTES = 10 * 1024 * 1024; // 10MB(원본 상한)
-const MAX_EDGE = 1600; // 긴 변 최대 px — 본문폭(~728)의 레티나 2배+여유. 더 커도 화면에선 차이 없음
+const MAX_WIDTH = 1600; // 업로드 최대 너비(자동·상한)
 
 /**
- * 너무 큰 이미지는 긴 변 기준 MAX_EDGE로 줄여 재인코딩한다(용량·로딩 최적화).
- * gif(애니메이션)·svg(벡터)는 캔버스로 처리하면 망가지니 원본을 그대로 쓴다.
- * 디코드 실패 등 어떤 문제든 원본으로 폴백한다.
+ * 이미지를 지정 너비(maxWidth)로 줄여 재인코딩한다. 원본이 더 작으면 그대로 둔다.
+ * gif(애니메이션)·svg(벡터)는 캔버스로 처리하면 망가지니 원본을 유지. 문제 시 원본 폴백.
  */
-async function downscale(file: File): Promise<Blob> {
+async function resizeToWidth(file: File, maxWidth: number): Promise<Blob> {
   if (file.type === "image/gif" || file.type === "image/svg+xml") return file;
   try {
     const bitmap = await createImageBitmap(file);
-    const longer = Math.max(bitmap.width, bitmap.height);
-    if (longer <= MAX_EDGE) {
+    if (bitmap.width <= maxWidth) {
       bitmap.close();
       return file;
     }
-    const scale = MAX_EDGE / longer;
+    const scale = maxWidth / bitmap.width;
     const w = Math.round(bitmap.width * scale);
     const h = Math.round(bitmap.height * scale);
     const canvas = document.createElement("canvas");
@@ -54,7 +53,8 @@ const extFor = (type: string) =>
 /**
  * 에디터에서 떨군/붙여넣은 이미지를 Storage(post-images)에 올리고 공개 URL을 돌려준다.
  * 업로드는 어드민(인증 세션)만 — Storage 정책으로 막혀 있다(0005_storage.sql). 읽기는 공개.
- * 큰 이미지는 올리기 전에 자동으로 줄인다(downscale). Crepe onUpload로 연결.
+ * 올리기 전 크기 선택 모달로 너비를 정해 그 크기로 줄인다(ADR-0019). 취소하면 업로드 안 함.
+ * gif·svg는 크기 조절 없이 원본 그대로. Crepe onUpload로 연결.
  */
 export async function uploadPostImage(file: File): Promise<string> {
   // 비이미지·초대용량은 애초에 막는다(깨진 그림·용량 낭비 방지)
@@ -65,7 +65,17 @@ export async function uploadPostImage(file: File): Promise<string> {
     throw new Error("이미지는 10MB까지 올릴 수 있어요");
   }
 
-  const blob = await downscale(file);
+  const resizable = file.type !== "image/gif" && file.type !== "image/svg+xml";
+  let blob: Blob = file;
+  if (resizable) {
+    const choice = await requestImageSize(file);
+    // 취소: throw하면 Milkdown이 "업로드 중" placeholder를 못 치워 stuck됨.
+    // 대신 빈 src를 돌려줘 빈 이미지 블록만 남기고(지우면 됨) 업로드는 하지 않는다.
+    if (choice === "cancel") return "";
+    const targetWidth = choice === "auto" ? MAX_WIDTH : choice;
+    blob = await resizeToWidth(file, targetWidth);
+  }
+
   const supabase = createClient();
   const outType = blob.type || file.type;
   const path = `${crypto.randomUUID()}.${extFor(outType)}`;

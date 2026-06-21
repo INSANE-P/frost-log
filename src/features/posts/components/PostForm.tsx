@@ -6,6 +6,7 @@ import { savePost, type SaveState } from "../actions";
 import type { EditData } from "../admin";
 import { TagInput } from "./TagInput";
 import { DatePicker } from "./DatePicker";
+import { ImageSizeDialog } from "./ImageSizeDialog";
 
 // 무거운 에디터는 클라이언트에서만 — SSR 비활성 동적 로드(ADR-0015)
 const MarkdownEditor = dynamic(() => import("./MarkdownEditor"), {
@@ -171,6 +172,9 @@ export function PostForm({
           <MarkdownEditor defaultValue={data?.content ?? ""} onChange={setContent} />
         </div>
       </div>
+
+      {/* 이미지 업로드 시 크기 선택 모달(상시 마운트, onUpload이 연다) */}
+      <ImageSizeDialog />
     </form>
   );
 }
