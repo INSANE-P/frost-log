@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 
+const IMAGE_BUCKET = "post-images";
+
 const PostInput = z.object({
   id: z.string().uuid().optional(),
   type: z.enum(["journal", "post"]),
@@ -117,4 +119,48 @@ export async function deletePost(formData: FormData): Promise<void> {
   revalidatePath("/posts");
   revalidatePath("/journal");
   redirect("/admin");
+}
+
+export type SweepResult = { deleted: number; kept: number; error?: string };
+
+/**
+ * 미사용 이미지 정리(ADR-0020) — 어느 글에서도 참조하지 않는 Storage 파일을 삭제한다.
+ * 모든 글의 content+cover에서 버킷 이미지 경로를 모아, 버킷 목록과 대조해 차집합을 지운다.
+ * 인증 사용자만. 저장 안 한 드래프트 이미지는 고아로 보여 지워질 수 있어, 작성 중엔 실행하지 않는다.
+ */
+export async function sweepUnusedImages(): Promise<SweepResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { deleted: 0, kept: 0, error: "권한이 없어요" };
+
+  const { data: posts, error: readErr } = await supabase
+    .from("posts")
+    .select("content, cover_image");
+  if (readErr) return { deleted: 0, kept: 0, error: readErr.message };
+
+  // 본문·커버에서 우리 버킷 이미지 경로(파일명)를 수집
+  const referenced = new Set<string>();
+  const re = /\/storage\/v1\/object\/public\/post-images\/([^\s"')]+)/g;
+  for (const p of (posts ?? []) as { content: string | null; cover_image: string | null }[]) {
+    const text = `${p.content ?? ""}\n${p.cover_image ?? ""}`;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text)) !== null) referenced.add(decodeURIComponent(m[1]));
+  }
+
+  const { data: files, error: listErr } = await supabase.storage
+    .from(IMAGE_BUCKET)
+    .list("", { limit: 1000 });
+  if (listErr) return { deleted: 0, kept: 0, error: listErr.message };
+
+  // 폴더(id=null) 제외, 참조 안 된 파일만 삭제 대상
+  const all = (files ?? []).filter((f) => f.id !== null && f.name);
+  const toDelete = all.filter((f) => !referenced.has(f.name)).map((f) => f.name);
+  const kept = all.length - toDelete.length;
+  if (toDelete.length > 0) {
+    const { error: delErr } = await supabase.storage.from(IMAGE_BUCKET).remove(toDelete);
+    if (delErr) return { deleted: 0, kept, error: delErr.message };
+  }
+  return { deleted: toDelete.length, kept };
 }
