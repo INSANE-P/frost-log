@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { listAllForAdmin } from "@/features/posts/admin";
 import { DeleteButton } from "@/features/posts/components/DeleteButton";
+import { SweepButton } from "@/features/posts/components/SweepButton";
 import { formatDate } from "@/lib/utils/date";
 
 export const metadata: Metadata = { title: "관리자" };
@@ -56,6 +57,10 @@ export default async function AdminPage() {
           ))}
         </ul>
       )}
+
+      <div className="mt-12 border-t border-hairline pt-5">
+        <SweepButton />
+      </div>
     </section>
   );
 }
