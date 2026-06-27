@@ -5,6 +5,7 @@ import { formatDate } from "@/lib/utils/date";
 import type { Entry } from "../types";
 import { entryHref } from "../types";
 import { StokeButton } from "./StokeButton";
+import { Comments } from "./Comments";
 
 /** 글쓴이 아바타 — 직접 그린 공룡 캐릭터. 얼음 톤 배경 위에 캐릭터 전체가 보이게 contain. */
 function DinoAvatar({ size }: { size: number }) {
@@ -85,6 +86,11 @@ export function PostArticle({
       <div className="mt-12 border-t border-border pt-8 text-center">
         <p className="mb-4 text-sm text-muted">이 글이 좋았다면, 불을 지펴주세요</p>
         <StokeButton slug={entry.slug} initial={entry.stokes ?? 0} />
+      </div>
+
+      {/* 댓글 — Giscus(GitHub Discussions) */}
+      <div className="mt-14 border-t border-border pt-8">
+        <Comments />
       </div>
 
       {/* 이전 / 다음 — 같은 흐름 안에서 이어 읽기. 두 카드 모두 좌측 정렬로 통일 */}
