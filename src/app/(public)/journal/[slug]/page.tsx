@@ -10,7 +10,13 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const entry = await getBySlug("journal", slug);
-  return { title: entry?.title ?? "기록" };
+  if (!entry) return { title: "기록" };
+  const description = entry.excerpt || undefined;
+  return {
+    title: entry.title,
+    description,
+    openGraph: { type: "article", title: entry.title, description },
+  };
 }
 
 export default async function JournalDetailPage({

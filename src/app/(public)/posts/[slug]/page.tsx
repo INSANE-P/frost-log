@@ -10,7 +10,13 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const entry = await getBySlug("post", slug);
-  return { title: entry?.title ?? "이야기" };
+  if (!entry) return { title: "이야기" };
+  const description = entry.excerpt || undefined;
+  return {
+    title: entry.title,
+    description,
+    openGraph: { type: "article", title: entry.title, description },
+  };
 }
 
 export default async function PostDetailPage({
