@@ -1,6 +1,8 @@
 import { ImageResponse } from "next/og";
+import { DINO_DATA_URL } from "./og-dino-data";
 
 // 공용 OG 렌더러 — 사이트 기본/글별 OG가 같은 톤을 쓴다(토스 톤: frost 그라데이션 + 좌측 볼드 + 우측 마스코트).
+// 폰트는 절대 CDN URL이라 fetch OK. 마스코트는 base64 임베드(상대경로 fetch가 서버에서 실패해서).
 const FONT_700 =
   "https://cdn.jsdelivr.net/fontsource/fonts/noto-sans-kr@latest/korean-700-normal.woff";
 const FONT_400 =
@@ -8,19 +10,15 @@ const FONT_400 =
 
 export const OG_SIZE = { width: 1200, height: 630 };
 
-async function loadAssets() {
-  const [bold, reg, dinoBuf] = await Promise.all([
+async function loadFonts() {
+  const [bold, reg] = await Promise.all([
     fetch(FONT_700).then((r) => r.arrayBuffer()),
     fetch(FONT_400).then((r) => r.arrayBuffer()),
-    fetch(new URL("./og-dino.png", import.meta.url)).then((r) => r.arrayBuffer()),
   ]);
-  return {
-    dino: `data:image/png;base64,${Buffer.from(dinoBuf).toString("base64")}`,
-    fonts: [
-      { name: "Noto", data: bold, weight: 700 as const, style: "normal" as const },
-      { name: "Noto", data: reg, weight: 400 as const, style: "normal" as const },
-    ],
-  };
+  return [
+    { name: "Noto", data: bold, weight: 700 as const, style: "normal" as const },
+    { name: "Noto", data: reg, weight: 400 as const, style: "normal" as const },
+  ];
 }
 
 /** 제목 길이에 맞춰 폰트 크기 자동 조절(긴 제목이 넘치지 않게). */
@@ -42,7 +40,7 @@ export async function renderOg({
   footnote?: string;
   titleSize?: number;
 }) {
-  const { dino, fonts } = await loadAssets();
+  const fonts = await loadFonts();
   return new ImageResponse(
     (
       <div
@@ -81,7 +79,7 @@ export async function renderOg({
           ) : null}
         </div>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={dino} width={350} height={350} alt="" style={{ objectFit: "contain" }} />
+        <img src={DINO_DATA_URL} width={350} height={350} alt="" style={{ objectFit: "contain" }} />
       </div>
     ),
     { ...OG_SIZE, fonts },
